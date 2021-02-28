@@ -88,16 +88,18 @@ ${paths["d8"]} --output $proj/bin $proj/bin/classes-process.jar
 echo "Adding dex file to APK..."
 zip -uj $proj/bin/unaligned.apk $proj/bin/classes.dex
 
-echo "Keygen..."
-keytool -genkeypair\
-        -keystore $ks\
-        -alias androidkey \
-        -validity 10000\
-        -keyalg RSA\
-        -keysize 2048 \
-        -storepass $kspass\
-        -keypass $kspass\
-        -dname "CN=Unknown,OU=Unknown,O=Unknown,L=Unknown,ST=Unknown,C=Unknown";
+if [ ! -f $ks ]; then
+  echo "Keygen..."
+  keytool -genkeypair\
+          -keystore $ks\
+          -alias androidkey \
+          -validity 10000\
+          -keyalg RSA\
+          -keysize 2048 \
+          -storepass $kspass\
+          -keypass $kspass\
+          -dname "CN=Unknown,OU=Unknown,O=Unknown,L=Unknown,ST=Unknown,C=Unknown";
+fi;
 
 echo "Aligning and signing APK..."
 ${paths["zipalign"]} -f 4 $proj/bin/unaligned.apk $proj/bin/hello.apk
