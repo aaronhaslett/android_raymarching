@@ -17,7 +17,7 @@ for dir in "$@"; do
   fi;
 done;
 
-command -v java -v javac -v keytool -v zip -v proguard;
+command -v java -v javac -v keytool -v zip;
 
 proj="$1";
 base_path="$2";
@@ -74,13 +74,15 @@ javac -d $proj/obj\
       -source 1.9 -target 1.9\
       `find $proj/src/ -name *.java`
 
-echo "Proguard run on classes"
-cp android.pro.template android.pro
-echo "-injars $proj/obj" | tee -a android.pro;
-echo "-outjars $proj/bin/classes-process.jar" | tee -a android.pro;
-echo "-libraryjars ./lib" | tee -a android.pro;
-cp ${paths["android.jar"]} $proj/lib/
-proguard @android.pro
+if command -v proguard; then
+  echo "Proguard run on classes"
+  cp android.pro.template android.pro
+  echo "-injars $proj/obj" | tee -a android.pro;
+  echo "-outjars $proj/bin/classes-process.jar" | tee -a android.pro;
+  echo "-libraryjars ./lib" | tee -a android.pro;
+  cp ${paths["android.jar"]} $proj/lib/;
+  proguard @android.pro;
+fi;
 
 echo "Dexing classes..."
 ${paths["d8"]} --output $proj/bin $proj/bin/classes-process.jar
