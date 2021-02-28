@@ -17,6 +17,8 @@ for dir in "$@"; do
   fi;
 done;
 
+command -v javac -v keytool -v zip;
+
 proj="$1";
 base_path="$2";
 tools="aapt aapt2 d8 zipalign apksigner adb android.jar"
@@ -49,23 +51,12 @@ kspass="android";
 
 echo "Cleaning..."
 rm -rf $proj/src/com/example/helloandroid/R.java
-rm $ks
+rm -f $ks
 
-for dir in "obj bin compiled"; do
+for dir in obj bin compiled; do
   rm -rf "$proj/$dir";
-  mkdir "$proj/$dir"
+  mkdir "$proj/$dir";
 done;
-
-echo "Keygen..."
-keytool -genkeypair\
-        -keystore $ks\
-        -alias androidkey \
-        -validity 10000\
-        -keyalg RSA\
-        -keysize 2048 \
-        -storepass $kspass\
-        -keypass $kspass\
-        -dname "CN=Unknown,OU=Unknown,O=Unknown,L=Unknown,ST=Unknown,C=Unknown";
 
 echo "Compiling and linking resources into APK..."
 ${paths["aapt2"]} compile --dir $proj/res -o $proj/compiled
@@ -87,6 +78,17 @@ ${paths["d8"]} --output $proj/bin `find $proj/obj -type f -name *.class`
 
 echo "Adding dex file to APK..."
 zip -uj $proj/bin/unaligned.apk $proj/bin/classes.dex
+
+echo "Keygen..."
+keytool -genkeypair\
+        -keystore $ks\
+        -alias androidkey \
+        -validity 10000\
+        -keyalg RSA\
+        -keysize 2048 \
+        -storepass $kspass\
+        -keypass $kspass\
+        -dname "CN=Unknown,OU=Unknown,O=Unknown,L=Unknown,ST=Unknown,C=Unknown";
 
 echo "Aligning and signing APK..."
 ${paths["zipalign"]} -f 4 $proj/bin/unaligned.apk $proj/bin/hello.apk
