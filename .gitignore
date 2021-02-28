@@ -3,3 +3,5 @@ obj
 compiled
 keystore.jks
 **/R.java
+**/*.swp
+**/*.swo
