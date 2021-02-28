@@ -1,5 +1,6 @@
 <?xml version='1.0'?>
 <manifest xmlns:a='http://schemas.android.com/apk/res/android' package='com.example.helloandroid' a:versionCode='0' a:versionName='0'>
+    <uses-sdk a:targetSdkVersion="28" />
     <application a:label='A Hello Android'>
         <activity a:name='com.example.helloandroid.MainActivity'>
              <intent-filter>
