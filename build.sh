@@ -17,7 +17,7 @@ for dir in "$@"; do
   fi;
 done;
 
-command -v javac -v keytool -v zip;
+command -v java -v javac -v keytool -v zip -v proguard;
 
 proj="$1";
 base_path="$2";
@@ -53,13 +53,15 @@ echo "Cleaning..."
 rm -rf $proj/src/com/example/helloandroid/R.java
 rm -f $ks
 
-for dir in obj bin compiled; do
+for dir in lib obj bin compiled; do
   rm -rf "$proj/$dir";
   mkdir "$proj/$dir";
 done;
 
 echo "Compiling and linking resources into APK..."
-${paths["aapt2"]} compile --dir $proj/res -o $proj/compiled
+for f in `find $proj/res -type f`; do
+  ${paths["aapt2"]} compile $f -o $proj/compiled;
+done;
 ${paths["aapt2"]} link $proj/compiled/*\
                   --java $proj/src\
                   --manifest $proj/AndroidManifest.xml\
@@ -68,13 +70,20 @@ ${paths["aapt2"]} link $proj/compiled/*\
 
 echo "Compiling source..."
 javac -d $proj/obj\
-      -classpath $proj/src\
-      -bootclasspath ${paths["android.jar"]}\
-      -source 1.8 -target 1.8\
+      --class-path ${paths["android.jar"]}\
+      -source 1.9 -target 1.9\
       `find $proj/src/ -name *.java`
 
+echo "Proguard run on classes"
+cp android.pro.template android.pro
+echo "-injars $proj/obj" | tee -a android.pro;
+echo "-outjars $proj/bin/classes-process.jar" | tee -a android.pro;
+echo "-libraryjars ./lib" | tee -a android.pro;
+cp ${paths["android.jar"]} $proj/lib/
+proguard @android.pro
+
 echo "Dexing classes..."
-${paths["d8"]} --output $proj/bin `find $proj/obj -type f -name *.class`
+${paths["d8"]} --output $proj/bin $proj/bin/classes-process.jar
 
 echo "Adding dex file to APK..."
 zip -uj $proj/bin/unaligned.apk $proj/bin/classes.dex
