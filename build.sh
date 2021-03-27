@@ -9,11 +9,13 @@ if [ $# -ge 2 ]; then
   exit 1;
 fi;
 
+# Check for required stuff.
 reqs="java javac keytool zip proguard";
 for req in $reqs; do
   command -v $req;
 done;
 
+# Default project_dir to current dir
 proj=${1:-"./"}
 
 if [ ! -d "$proj" ]; then
@@ -32,6 +34,7 @@ echo "Cleaning..."
 rm -rf $proj/src/com/example/helloandroid/R.java
 rm -f $ks
 
+# Wipe everything
 for dir in lib obj bin compiled; do
   rm -rf "$proj/$dir";
   mkdir "$proj/$dir";
