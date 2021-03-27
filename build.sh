@@ -1,51 +1,30 @@
 #!/bin/bash
 
-set -e
+set -ex
 
-usage="Usage: $0 project_dir android_tools_dir";
+usage="Usage: $0 [project_dir]";
 
-if [ $# -ne 2 ]; then
+if [ $# -ge 2 ]; then
   echo $usage;
   exit 1;
 fi;
 
-for dir in "$@"; do
-  if [ ! -d "$dir" ]; then
-    echo "dir not found: $dir";
-    echo $usage;
-    exit 1;
-  fi;
+reqs="java javac keytool zip";
+for req in $reqs; do
+  command -v $req;
 done;
 
-command -v java -v javac -v keytool -v zip;
 
-proj="$1";
-base_path="$2";
-tools="aapt aapt2 d8 zipalign apksigner adb android.jar"
+proj=${1:-"./"}
 
-declare -A paths
+if [ ! -d "$proj" ]; then
+  echo "dir not found: $proj";
+  echo $usage;
+  exit 1;
+fi;
 
-for tool in $tools; do
-
-  # Don't try to collapse the two checks in this loop.
-  # "echo | wc" can't distinguish between empty string and one result.
-  # No, adding -n to echo doesn't work.
-
-  res=`find $base_path -type f -name $tool`;
-  if [ -z $res ]; then
-    echo "$tool not found in path $base_path";
-    exit 1;
-  fi
-
-  num=`echo $res | wc -l`;
-  if [ $num -ne 1 ]; then
-    echo "Expected to find 1 $tool but found $num: $res"
-    exit 1;
-  fi
-
-  paths["$tool"]="$res";
-done;
-
+./fetch_packages.sh
+tools_dir="$proj/package_dir"
 ks="$proj/keystore.jks";
 kspass="android";
 
@@ -60,17 +39,17 @@ done;
 
 echo "Compiling and linking resources into APK..."
 for f in `find $proj/res -type f`; do
-  ${paths["aapt2"]} compile $f -o $proj/compiled;
+  $tools_dir/aapt2 compile $f -o $proj/compiled;
 done;
-${paths["aapt2"]} link $proj/compiled/*\
+$tools_dir/aapt2 link $proj/compiled/*\
                   --java $proj/src\
                   --manifest $proj/AndroidManifest.xml\
-                  -I ${paths["android.jar"]}\
+                  -I $tools_dir/android.jar\
                   -o $proj/bin/unaligned.apk
 
 echo "Compiling source..."
 javac -d $proj/obj\
-      --class-path ${paths["android.jar"]}\
+      --class-path $tools_dir/android.jar\
       -source 1.9 -target 1.9\
       `find $proj/src/ -name *.java`
 
@@ -80,12 +59,12 @@ if command -v proguard; then
   echo "-injars $proj/obj" | tee -a android.pro;
   echo "-outjars $proj/bin/classes-process.jar" | tee -a android.pro;
   echo "-libraryjars ./lib" | tee -a android.pro;
-  cp ${paths["android.jar"]} $proj/lib/;
+  cp $tools_dir/android.jar $proj/lib/;
   proguard @android.pro;
 fi;
 
 echo "Dexing classes..."
-${paths["d8"]} --output $proj/bin $proj/bin/classes-process.jar
+$tools_dir/d8 --output $proj/bin $proj/bin/classes-process.jar
 
 echo "Adding dex file to APK..."
 zip -uj $proj/bin/unaligned.apk $proj/bin/classes.dex
@@ -104,8 +83,8 @@ if [ ! -f $ks ]; then
 fi;
 
 echo "Aligning and signing APK..."
-${paths["zipalign"]} -f 4 $proj/bin/unaligned.apk $proj/bin/hello.apk
-${paths["apksigner"]} sign --ks $ks --ks-pass pass:$kspass $proj/bin/hello.apk
+$tools_dir/zipalign -f 4 $proj/bin/unaligned.apk $proj/bin/hello.apk
+$tools_dir/apksigner sign --ks $ks --ks-pass pass:$kspass $proj/bin/hello.apk
 
 echo "Uploading..."
-${paths["adb"]} install -r $proj/bin/hello.apk
+$tools_dir/adb install -r $proj/bin/hello.apk
