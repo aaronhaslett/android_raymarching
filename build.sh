@@ -9,11 +9,10 @@ if [ $# -ge 2 ]; then
   exit 1;
 fi;
 
-reqs="java javac keytool zip";
+reqs="java javac keytool zip proguard";
 for req in $reqs; do
   command -v $req;
 done;
-
 
 proj=${1:-"./"}
 
@@ -24,6 +23,7 @@ if [ ! -d "$proj" ]; then
 fi;
 
 ./fetch_packages.sh
+
 tools_dir="$proj/package_dir"
 ks="$proj/keystore.jks";
 kspass="android";
@@ -53,15 +53,13 @@ javac -d $proj/obj\
       -source 1.9 -target 1.9\
       `find $proj/src/ -name *.java`
 
-if command -v proguard; then
-  echo "Proguard run on classes"
-  cp android.pro.template android.pro
-  echo "-injars $proj/obj" | tee -a android.pro;
-  echo "-outjars $proj/bin/classes-process.jar" | tee -a android.pro;
-  echo "-libraryjars ./lib" | tee -a android.pro;
-  cp $tools_dir/android.jar $proj/lib/;
-  proguard @android.pro;
-fi;
+echo "Proguard run on classes"
+cp android.pro.template android.pro
+echo "-injars $proj/obj" | tee -a android.pro;
+echo "-outjars $proj/bin/classes-process.jar" | tee -a android.pro;
+echo "-libraryjars ./lib" | tee -a android.pro;
+cp $tools_dir/android.jar $proj/lib/;
+proguard @android.pro;
 
 echo "Dexing classes..."
 $tools_dir/d8 --output $proj/bin $proj/bin/classes-process.jar
